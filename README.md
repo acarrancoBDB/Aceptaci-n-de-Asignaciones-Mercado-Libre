@@ -9,9 +9,13 @@ npm install
 npm start
 ```
 
-La primera vez aparece un QR en la terminal: en el teléfono ve a **WhatsApp > Dispositivos vinculados > Vincular un dispositivo** y escanéalo. La sesión se guarda en `auth/`, así que las siguientes veces no pide QR.
+Abre **http://localhost:3000** (otro puerto con la variable `PORT`). La primera vez la página muestra un QR: en el teléfono ve a **WhatsApp > Dispositivos vinculados > Vincular un dispositivo** y escanéalo. La sesión se guarda en `auth/`, así que las siguientes veces no pide QR.
 
-Al conectar, el bot guarda la lista de tus grupos (nombre y JID) en `data/grupos.json`.
+Ya conectado, la página muestra tus grupos (marcando los que se escuchan), la actividad reciente de las reglas y un botón para cerrar sesión, que genera un QR nuevo. La lista de grupos también se guarda en `data/grupos.json`.
+
+La interfaz solo escucha en localhost, porque el QR da acceso a tu WhatsApp.
+
+> En Windows, si PowerShell bloquea `npm`, usa `npm.cmd start` o `node src/index.js`.
 
 ## Configurar reglas: `config/reglas.json`
 

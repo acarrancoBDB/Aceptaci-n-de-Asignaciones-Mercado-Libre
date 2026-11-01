@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bot WhatsApp BDB</title>
+  <style>
+    :root {
+      --fondo: #f4f6f5; --tarjeta: #ffffff; --texto: #1c2321; --suave: #5f6b67;
+      --borde: #dde3e0; --verde: #1f8a5b; --ambar: #b7791f; --rojo: #c0392b;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --fondo: #121615; --tarjeta: #1b201f; --texto: #e8eceb; --suave: #9aa6a2; --borde: #2c3331; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--fondo); color: var(--texto); font: 15px/1.5 system-ui, sans-serif; }
+    main { max-width: 860px; margin: 0 auto; padding: 24px 16px; display: grid; gap: 16px; }
+    h1 { font-size: 22px; margin: 0; }
+    h2 { font-size: 15px; margin: 0 0 12px; color: var(--suave); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+    .tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 12px; padding: 20px; }
+    .estado { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+    .punto { width: 10px; height: 10px; border-radius: 50%; background: var(--ambar); }
+    .conectado .punto { background: var(--verde); }
+    #qr { text-align: center; }
+    #qr img { width: 280px; max-width: 100%; background: #fff; padding: 12px; border-radius: 8px; }
+    ol { margin: 8px 0 0; padding-left: 20px; color: var(--suave); text-align: left; display: inline-block; }
+    ul { list-style: none; margin: 0; padding: 0; }
+    ul li { padding: 8px 0; border-top: 1px solid var(--borde); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    ul li:first-child { border-top: 0; }
+    .etiqueta { font-size: 12px; color: var(--verde); border: 1px solid currentColor; border-radius: 99px; padding: 0 8px; }
+    .vacio, .suave { color: var(--suave); }
+    button { font: inherit; border: 1px solid var(--rojo); color: var(--rojo); background: none; border-radius: 8px; padding: 6px 14px; cursor: pointer; }
+    .fila { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="fila">
+    <h1>Bot WhatsApp BDB</h1>
+    <span id="estado" class="estado"><span class="punto"></span><span id="estado-texto">Cargando…</span></span>
+  </div>
+
+  <section id="qr" class="tarjeta" hidden>
+    <h2>Vincular WhatsApp</h2>
+    <img id="qr-img" alt="Código QR para vincular WhatsApp">
+    <div><ol>
+      <li>Abre WhatsApp en tu teléfono</li>
+      <li>Menú › Dispositivos vinculados › Vincular un dispositivo</li>
+      <li>Apunta la cámara a este código (se renueva solo)</li>
+    </ol></div>
+  </section>
+
+  <section id="panel" class="tarjeta" hidden>
+    <div class="fila">
+      <span>Sesión: <strong id="usuario"></strong></span>
+      <button id="cerrar">Cerrar sesión</button>
+    </div>
+  </section>
+
+  <section id="actividad" class="tarjeta" hidden>
+    <h2>Actividad reciente</h2>
+    <ul id="eventos"></ul>
+  </section>
+
+  <section id="seccion-grupos" class="tarjeta" hidden>
+    <h2>Tus grupos</h2>
+    <p class="suave">Usa estos nombres en <code>config/reglas.json</code>.</p>
+    <ul id="grupos"></ul>
+  </section>
+</main>
+
+<script>
+  const textos = { iniciando: 'Iniciando…', qr: 'Esperando escaneo', conectado: 'Conectado', reconectando: 'Reconectando…' }
+  const $ = (id) => document.getElementById(id)
+
+  function elemento(etiqueta, texto, clase) {
+    const el = document.createElement(etiqueta)
+    if (texto) el.textContent = texto
+    if (clase) el.className = clase
+    return el
+  }
+
+  function pintar(e) {
+    $('estado-texto').textContent = textos[e.conexion] ?? e.conexion
+    $('estado').classList.toggle('conectado', e.conexion === 'conectado')
+
+    $('qr').hidden = !(e.conexion === 'qr' && e.qr)
+    if (e.qr && $('qr-img').src !== e.qr) $('qr-img').src = e.qr
+
+    const conectado = e.conexion === 'conectado'
+    $('panel').hidden = $('actividad').hidden = $('seccion-grupos').hidden = !conectado
+    $('usuario').textContent = e.usuario ?? ''
+
+    const eventos = $('eventos')
+    eventos.replaceChildren(...(e.eventos.length
+      ? e.eventos.map((ev) => {
+          const li = elemento('li')
+          li.append(
+            elemento('span', `${ev.regla}: ${ev.autor} en ${ev.grupo} → ${ev.destinos.join(', ') || 'sin destino'}`),
+            elemento('span', new Date(ev.hora).toLocaleTimeString(), 'suave'))
+          return li
+        })
+      : [elemento('li', 'Aún no se ha activado ninguna regla.', 'vacio')]))
+
+    const origen = new Set(e.gruposOrigen)
+    $('grupos').replaceChildren(...e.grupos.map((g) => {
+      const li = elemento('li')
+      li.append(elemento('span', g.nombre))
+      if (origen.has(g.jid)) li.append(elemento('span', 'escuchando', 'etiqueta'))
+      return li
+    }))
+  }
+
+  async function actualizar() {
+    try {
+      pintar(await (await fetch('/api/estado')).json())
+    } catch {
+      $('estado-texto').textContent = 'Servidor no disponible'
+    }
+  }
+
+  $('cerrar').onclick = async () => {
+    if (!confirm('¿Desvincular este WhatsApp del bot?')) return
+    await fetch('/api/cerrar-sesion', { method: 'POST' })
+    actualizar()
+  }
+
+  actualizar()
+  setInterval(actualizar, 2000)
+</script>
+</body>
+</html>
