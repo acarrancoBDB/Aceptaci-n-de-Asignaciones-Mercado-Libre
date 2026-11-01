@@ -1,0 +1,19 @@
+{
+  "gruposOrigen": ["Grupo de Trabajo"],
+  "reglas": [
+    {
+      "nombre": "Urgencias",
+      "palabras": ["urgente", "emergencia"],
+      "coincidencia": "cualquiera",
+      "destinos": ["Supervisores"],
+      "plantilla": "🚨 *Urgente* en {grupo}\n👤 {autor} ({fecha})\n\n{mensaje}"
+    },
+    {
+      "nombre": "Pedidos",
+      "palabras": ["pedido", "cliente"],
+      "coincidencia": "todas",
+      "destinos": ["Ventas", "Logística"],
+      "plantilla": "📦 Nuevo pedido reportado por {autor}:\n{mensaje}"
+    }
+  ]
+}

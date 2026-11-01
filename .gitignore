@@ -1,0 +1,5 @@
+node_modules/
+# Sesión de WhatsApp: equivale a tener tu teléfono desbloqueado, nunca la subas
+auth/
+data/
+*.log
